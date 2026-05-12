@@ -2,6 +2,9 @@
 
 ## Project overview
 
+Link to Dashboard: https://bangkok-taxi-demand.streamlit.app/
+
+
 This project explores how traditional taxi demand in Bangkok has changed over time using public GPS-derived taxi mobility analytics from Thailand's Ministry of Transport. I built it as an end-to-end data science project that starts with raw public data, cleans and merges it with weather data, creates forecasting features, compares classical forecasting models, and presents the results in a Streamlit dashboard.
 
 The main forecasting target is average taxi passenger trips per day. The dashboard looks at demand trends, seasonality, weather relationships, pickup/dropoff hotspots, model performance, and a simple forecast tool for testing future-month assumptions.
