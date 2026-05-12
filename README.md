@@ -53,7 +53,7 @@ python src/predict.py
 streamlit run app/streamlit_app.py
 ```
 
-For deployment, raw data, processed data, model artifacts, and figures are not committed to Git. The Streamlit app checks for missing artifacts on startup and generates them automatically by downloading the public data and running the pipeline. The deployed environment therefore needs internet access on first run.
+For deployment, raw data and generated figures are not committed to Git. The repository includes a small `deploy_artifacts/` fallback bundle with processed modeling data, model results, the saved model, and an aggregated hotspot summary so the Streamlit app can run even if the public OTP download host times out. If those bundled artifacts are missing, the app will try to download the public data and rebuild the pipeline on startup.
 
 ## Data sources
 

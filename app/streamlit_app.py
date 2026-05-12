@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -33,6 +34,9 @@ from src.config import (  # noqa: E402
 
 st.set_page_config(page_title="Bangkok Taxi Demand", layout="wide")
 
+DEPLOY_ARTIFACTS_DIR = PROJECT_ROOT / "deploy_artifacts"
+DEPLOY_HOTSPOT_SUMMARY_PATH = DEPLOY_ARTIFACTS_DIR / "hotspot_summary.csv"
+
 
 @st.cache_data
 def load_csv(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame | None:
@@ -45,10 +49,36 @@ def missing_file(path: Path, command: str) -> None:
     st.info(f"Missing `{path.relative_to(PROJECT_ROOT)}`. Run `{command}` to generate it.")
 
 
+def restore_bundled_artifacts() -> None:
+    """Restore small committed artifacts for deployments where OTP downloads time out."""
+    artifact_map = {
+        DEPLOY_ARTIFACTS_DIR / "taxi_analytics_clean.csv": CLEAN_TAXI_PATH,
+        DEPLOY_ARTIFACTS_DIR / "weather_monthly_clean.csv": CLEAN_WEATHER_PATH,
+        DEPLOY_ARTIFACTS_DIR / "modeling_dataset.csv": MODELING_DATA_PATH,
+        DEPLOY_ARTIFACTS_DIR / "model_results.csv": MODEL_RESULTS_PATH,
+        DEPLOY_ARTIFACTS_DIR / "test_predictions.csv": TEST_PREDICTIONS_PATH,
+        DEPLOY_ARTIFACTS_DIR / "best_model.joblib": BEST_MODEL_PATH,
+        DEPLOY_ARTIFACTS_DIR / "feature_columns.json": FEATURE_COLUMNS_PATH,
+    }
+    for source, destination in artifact_map.items():
+        if source.exists() and not destination.exists():
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+
+
 @st.cache_resource(show_spinner=False)
 def ensure_dashboard_artifacts() -> tuple[bool, str]:
     """Create deploy-time data/model artifacts if ignored files are absent."""
-    required_outputs = [MODELING_DATA_PATH, MODEL_RESULTS_PATH, TEST_PREDICTIONS_PATH, BEST_MODEL_PATH, FEATURE_COLUMNS_PATH]
+    required_outputs = [
+        CLEAN_TAXI_PATH,
+        CLEAN_WEATHER_PATH,
+        MODELING_DATA_PATH,
+        MODEL_RESULTS_PATH,
+        TEST_PREDICTIONS_PATH,
+        BEST_MODEL_PATH,
+        FEATURE_COLUMNS_PATH,
+    ]
+    restore_bundled_artifacts()
     if all(path.exists() for path in required_outputs):
         return True, "Artifacts already available."
 
@@ -412,15 +442,16 @@ def metric_explanations() -> pd.DataFrame:
 def page_hotspots() -> None:
     st.title("Hotspot Analysis")
     hotspots = load_csv(RAW_TAXI_HOTSPOTS_PATH)
-    if hotspots is None:
+    summary = load_csv(DEPLOY_HOTSPOT_SUMMARY_PATH)
+    if hotspots is not None:
+        try:
+            summary = prepare_hotspot_summary(hotspots)
+        except ValueError as exc:
+            st.warning(str(exc))
+            st.dataframe(hotspots.head(50), use_container_width=True)
+            return
+    elif summary is None:
         missing_file(RAW_TAXI_HOTSPOTS_PATH, "python src/download_data.py")
-        return
-
-    try:
-        summary = prepare_hotspot_summary(hotspots)
-    except ValueError as exc:
-        st.warning(str(exc))
-        st.dataframe(hotspots.head(50), use_container_width=True)
         return
 
     st.write(
@@ -516,9 +547,9 @@ def page_hotspots() -> None:
             use_container_width=True,
         )
 
-    lat_cols = [col for col in hotspots.columns if "lat" in col.lower() or "latitude" in col.lower()]
-    lon_cols = [col for col in hotspots.columns if "lon" in col.lower() or "lng" in col.lower() or "longitude" in col.lower()]
-    if lat_cols and lon_cols:
+    lat_cols = [col for col in hotspots.columns if "lat" in col.lower() or "latitude" in col.lower()] if hotspots is not None else []
+    lon_cols = [col for col in hotspots.columns if "lon" in col.lower() or "lng" in col.lower() or "longitude" in col.lower()] if hotspots is not None else []
+    if hotspots is not None and lat_cols and lon_cols:
         st.map(hotspots.rename(columns={lat_cols[0]: "lat", lon_cols[0]: "lon"}).dropna(subset=["lat", "lon"]))
 
 
