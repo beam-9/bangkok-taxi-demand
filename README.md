@@ -53,6 +53,8 @@ python src/predict.py
 streamlit run app/streamlit_app.py
 ```
 
+For deployment, raw data, processed data, model artifacts, and figures are not committed to Git. The Streamlit app checks for missing artifacts on startup and generates them automatically by downloading the public data and running the pipeline. The deployed environment therefore needs internet access on first run.
+
 ## Data sources
 
 - OTP Passenger Trip Analytics from GPS taxi data: https://datagov.mot.go.th/dataset/otp_69_04

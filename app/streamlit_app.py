@@ -20,10 +20,13 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.config import (  # noqa: E402
     BEST_MODEL_PATH,
     CLEAN_TAXI_PATH,
+    CLEAN_WEATHER_PATH,
     FEATURE_COLUMNS_PATH,
     MODEL_RESULTS_PATH,
     MODELING_DATA_PATH,
+    RAW_TAXI_ANALYTICS_PATH,
     RAW_TAXI_HOTSPOTS_PATH,
+    RAW_WEATHER_PATH,
     TEST_PREDICTIONS_PATH,
 )
 
@@ -40,6 +43,47 @@ def load_csv(path: Path, parse_dates: list[str] | None = None) -> pd.DataFrame |
 
 def missing_file(path: Path, command: str) -> None:
     st.info(f"Missing `{path.relative_to(PROJECT_ROOT)}`. Run `{command}` to generate it.")
+
+
+@st.cache_resource(show_spinner=False)
+def ensure_dashboard_artifacts() -> tuple[bool, str]:
+    """Create deploy-time data/model artifacts if ignored files are absent."""
+    required_outputs = [MODELING_DATA_PATH, MODEL_RESULTS_PATH, TEST_PREDICTIONS_PATH, BEST_MODEL_PATH, FEATURE_COLUMNS_PATH]
+    if all(path.exists() for path in required_outputs):
+        return True, "Artifacts already available."
+
+    try:
+        from src.clean_taxi_data import clean_taxi_data
+        from src.clean_weather_data import clean_weather_data
+        from src.download_data import download_file, download_weather
+        from src.evaluate_model import evaluate
+        from src.feature_engineering import create_features
+        from src.train_model import train_models
+        from src.config import TAXI_ANALYTICS_PAGE, TAXI_ANALYTICS_URL, TAXI_HOTSPOTS_PAGE, TAXI_HOTSPOTS_URL, ensure_directories
+
+        ensure_directories()
+        if not RAW_TAXI_ANALYTICS_PATH.exists():
+            download_file(TAXI_ANALYTICS_URL, RAW_TAXI_ANALYTICS_PATH, TAXI_ANALYTICS_PAGE)
+        if not RAW_TAXI_HOTSPOTS_PATH.exists():
+            download_file(TAXI_HOTSPOTS_URL, RAW_TAXI_HOTSPOTS_PATH, TAXI_HOTSPOTS_PAGE)
+        if not RAW_WEATHER_PATH.exists():
+            download_weather(RAW_WEATHER_PATH)
+
+        if not CLEAN_TAXI_PATH.exists():
+            clean_taxi_data()
+        if not CLEAN_WEATHER_PATH.exists():
+            clean_weather_data()
+        if not MODELING_DATA_PATH.exists():
+            create_features()
+        if not MODEL_RESULTS_PATH.exists() or not BEST_MODEL_PATH.exists() or not FEATURE_COLUMNS_PATH.exists():
+            train_models()
+        if not TEST_PREDICTIONS_PATH.exists():
+            train_models()
+        evaluate()
+    except Exception as exc:
+        return False, str(exc)
+
+    return True, "Dashboard artifacts generated successfully."
 
 
 def infer_target_name(df: pd.DataFrame | None) -> str:
@@ -589,6 +633,14 @@ def page_forecast(modeling: pd.DataFrame | None) -> None:
 
 
 def main() -> None:
+    with st.spinner("Preparing dashboard data and model artifacts..."):
+        artifacts_ready, artifact_message = ensure_dashboard_artifacts()
+    if not artifacts_ready:
+        st.error("The dashboard could not prepare its required data files.")
+        st.write(artifact_message)
+        st.info("On deployment, the app needs internet access to download the public OTP and Open-Meteo files on first run.")
+        return
+
     modeling = load_csv(MODELING_DATA_PATH, parse_dates=["date"])
     page = st.sidebar.radio(
         "Page",
