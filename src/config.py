@@ -25,10 +25,13 @@ TAXI_HOTSPOTS_URL = (
 TAXI_HOTSPOTS_PAGE = "https://datagov.mot.go.th/dataset/otp_69_05"
 WEATHER_URL = (
     "https://archive-api.open-meteo.com/v1/archive?"
-    "latitude=13.7563&longitude=100.5018&start_date=2022-02-01&end_date=2026-03-31&"
+    "latitude=13.7563&longitude=100.5018&start_date=2023-01-01&end_date=2026-03-31&"
     "hourly=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code&"
     "timezone=Asia%2FBangkok"
 )
+
+ANALYSIS_START_DATE = "2023-01-01"
+ANALYSIS_END_DATE = "2026-12-31"
 
 RAW_TAXI_ANALYTICS_PATH = RAW_DATA_DIR / "otp_69_04_taxi_analytics.csv"
 RAW_TAXI_HOTSPOTS_PATH = RAW_DATA_DIR / "otp_69_05_taxi_hotspots.csv"
@@ -56,4 +59,3 @@ def ensure_directories() -> None:
     """Create runtime directories used by scripts."""
     for path in [RAW_DATA_DIR, PROCESSED_DATA_DIR, MODELS_DIR, FIGURES_DIR]:
         path.mkdir(parents=True, exist_ok=True)
-

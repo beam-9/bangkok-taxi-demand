@@ -2,66 +2,37 @@
 
 ## Project overview
 
-This is a reproducible end-to-end data science project for analyzing Bangkok taxi mobility patterns and forecasting next-month taxi passenger demand. It uses public GPS-derived taxi mobility analytics from Thailand's Ministry of Transport and historical Bangkok weather data from Open-Meteo.
+This project explores how traditional taxi demand in Bangkok has changed over time using public GPS-derived taxi mobility analytics from Thailand's Ministry of Transport. I built it as an end-to-end data science project that starts with raw public data, cleans and merges it with weather data, creates forecasting features, compares classical forecasting models, and presents the results in a Streamlit dashboard.
 
-This is not Grab, Bolt, or other proprietary ride-hailing data. The project focuses on public urban mobility analytics, transparent forecasting, and a recruiter-friendly Streamlit dashboard.
+The main forecasting target is average taxi passenger trips per day. The dashboard looks at demand trends, seasonality, weather relationships, pickup/dropoff hotspots, model performance, and a simple forecast tool for testing future-month assumptions.
 
-## Why this project matters
-
-Taxi demand reflects commuter flows, tourism, weather, seasonality, and city activity. A monthly forecasting workflow can help planners and operators understand demand cycles, compare weather impacts, and evaluate whether machine learning improves over simple historical baselines.
-
-## Data sources
-
-- OTP Passenger Trip Analytics from GPS taxi data: https://datagov.mot.go.th/dataset/otp_69_04
-- OTP Taxi Pickup/Dropoff Top 20 Hotspot Dataset: https://datagov.mot.go.th/dataset/otp_69_05
-- Open-Meteo Historical Weather API: https://open-meteo.com/en/docs/historical-weather-api
+I intentionally avoided LSTM or deep learning methods. The dataset is monthly and relatively small, so classical baselines and tabular/time-series machine learning methods are more appropriate, easier to interpret, and more honest for this problem size.
 
 ## Methodology
 
-1. Download public OTP taxi analytics, hotspot data, and Bangkok hourly weather.
-2. Clean Thai/mixed taxi columns and select the best available demand target.
-3. Aggregate hourly weather into monthly features.
-4. Create calendar, seasonality, lag, rolling mean, and percentage-change features.
-5. Train models with a time-based train/test split.
-6. Compare classical ML models against naive and seasonal baselines.
-7. Present trends, weather impact, hotspots, model performance, and forecasting in Streamlit.
+The project follows a reproducible pipeline:
 
-No LSTM or deep learning is used. The dataset is monthly and relatively small, so baseline models and classical tabular/time-series ML are more appropriate and easier to interpret.
+1. Download OTP taxi analytics, OTP hotspot data, and Bangkok historical weather data.
+2. Clean Thai/mixed taxi data columns and select the best available demand target.
+3. Aggregate hourly Open-Meteo weather data into monthly weather features.
+4. Filter the analysis to the 2023-2026 period where the project focus is strongest.
+5. Fill internal missing monthly demand values with linear interpolation and flag those months for transparency.
+6. Create calendar, seasonality, lag, rolling-average, and percentage-change features.
+7. Train models with a time-based train/test split instead of a random split.
+8. Compare model performance against simple baselines.
+9. Display the results in a Streamlit dashboard.
 
-## Repository structure
+Models evaluated:
 
-```text
-bangkok-taxi-demand/
-  README.md
-  requirements.txt
-  .gitignore
-  data/
-    raw/
-    processed/
-  notebooks/
-    01_data_inspection.ipynb
-    02_eda.ipynb
-    03_modeling.ipynb
-  src/
-    config.py
-    download_data.py
-    clean_taxi_data.py
-    clean_weather_data.py
-    feature_engineering.py
-    train_model.py
-    evaluate_model.py
-    predict.py
-    plotting.py
-  app/
-    streamlit_app.py
-  models/
-  reports/
-    figures/
-```
+- Naive previous-month baseline
+- Seasonal previous-year baseline
+- Ridge regression
+- Random Forest Regressor
+- XGBoost Regressor, if the local environment supports it
 
-## How to run
+The main evaluation metrics are MAE, RMSE, MAPE, and R2. In the current run, the naive previous-month baseline performs best, which suggests monthly taxi demand is highly persistent and that recent demand contains more useful signal than the added weather/calendar features for this small dataset.
 
-Use Python 3.10 or newer.
+Run the project:
 
 ```bash
 python3.10 -m venv .venv
@@ -79,55 +50,20 @@ python src/predict.py
 streamlit run app/streamlit_app.py
 ```
 
-If an OTP direct CSV link fails, manually download the file from the dataset page and save it with the expected filename under `data/raw/`.
+## Data sources
 
-## Results
+- OTP Passenger Trip Analytics from GPS taxi data: https://datagov.mot.go.th/dataset/otp_69_04
+- OTP Taxi Pickup/Dropoff Top 20 Hotspot Dataset: https://datagov.mot.go.th/dataset/otp_69_05
+- Open-Meteo Historical Weather API: https://open-meteo.com/en/docs/historical-weather-api
 
-Results are generated after running the pipeline:
+This project does not use proprietary Grab, Bolt, or ride-hailing company data. The taxi data is public aggregated mobility data, which makes the project more reproducible but also limits the level of detail available for modeling.
 
-- `data/processed/model_results.csv`
-- `data/processed/test_predictions.csv`
-- `reports/figures/actual_vs_predicted.png`
-- `reports/figures/residuals_over_time.png`
+## Intent
 
-## Dashboard screenshots
+I wanted this project to connect data science with a real urban mobility question in Bangkok. Traditional taxis operate in a market where app-based ride-hailing platforms such as Grab and Bolt have become increasingly popular, so I was interested in whether public taxi data shows signs of changing demand patterns.
 
-Add screenshots from the Streamlit app after running the dashboard locally.
+The goal was not just to train a model, but to build a full analytical workflow that a reader could follow end to end. The project is meant to show how I approach messy public data, feature engineering, baseline comparison, model interpretation, and dashboard communication.
 
-## Model performance
+The dashboard is designed for exploration rather than only prediction. It helps answer questions such as whether taxi demand is trending downward, which months are stronger or weaker, whether rain or humidity appear related to demand, which locations repeatedly appear as hotspots, and whether machine learning improves on simple historical baselines.
 
-The training script evaluates:
-
-- Naive previous-month baseline
-- Seasonal previous-year baseline
-- Ridge regression
-- Random Forest Regressor
-- XGBoost Regressor, if installed
-
-The README should be updated with the generated `model_results.csv` table once the final data files are downloaded and processed.
-
-## Key insights
-
-Typical insights to document after running the data:
-
-- Direction and volatility of monthly taxi demand
-- Seasonal demand patterns by month
-- Relationship between rainfall and demand
-- Whether ML models outperform simple baselines
-- Most frequent pickup/dropoff hotspot areas
-
-## Limitations
-
-- The core demand data is monthly, which limits the usefulness of deep learning and high-frequency forecasting.
-- Public aggregated data may hide neighborhood-level and trip-level variation.
-- Weather is measured for central Bangkok and may not capture all local conditions.
-- Forecast accuracy depends on the stability of post-pandemic travel, tourism, and policy patterns.
-
-## Future improvements
-
-- Add holiday and event calendars for Bangkok.
-- Improve hotspot standardization and geocoding.
-- Add confidence intervals or scenario ranges.
-- Compare SARIMAX or Prophet as optional non-required models.
-- Deploy the Streamlit dashboard.
-
+The current results also show an important modeling lesson: a simple baseline can outperform more complex models when the dataset is small and demand changes gradually. That is useful context because it keeps the project grounded in the data instead of forcing a more complicated model where it is not justified.

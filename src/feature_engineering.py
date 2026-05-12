@@ -10,7 +10,14 @@ import pandas as pd
 if __package__ is None or __package__ == "":
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from src.config import CLEAN_TAXI_PATH, CLEAN_WEATHER_PATH, MODELING_DATA_PATH, ensure_directories  # noqa: E402
+from src.config import (  # noqa: E402
+    ANALYSIS_END_DATE,
+    ANALYSIS_START_DATE,
+    CLEAN_TAXI_PATH,
+    CLEAN_WEATHER_PATH,
+    MODELING_DATA_PATH,
+    ensure_directories,
+)
 
 
 def create_features(
@@ -28,7 +35,16 @@ def create_features(
     if "target" not in taxi.columns:
         raise ValueError("Clean taxi data must contain a 'target' column.")
 
+    start_date = pd.Timestamp(ANALYSIS_START_DATE)
+    end_date = pd.Timestamp(ANALYSIS_END_DATE)
+    taxi = taxi.loc[taxi["date"].between(start_date, end_date)].copy()
+    weather = weather.loc[weather["date"].between(start_date, end_date)].copy()
+
     df = taxi.merge(weather, on="date", how="left").sort_values("date").copy()
+    df["target_original"] = df["target"]
+    df["target_was_imputed"] = df["target"].isna().astype(int)
+    df["target"] = df["target"].interpolate(method="linear", limit_area="inside")
+    df = df.dropna(subset=["target"]).copy()
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
@@ -62,4 +78,3 @@ def create_features(
 
 if __name__ == "__main__":
     create_features()
-

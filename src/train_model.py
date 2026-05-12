@@ -30,7 +30,7 @@ from src.config import (  # noqa: E402
 )
 
 
-EXCLUDED_FEATURES = {"date", "target"}
+EXCLUDED_FEATURES = {"date", "target", "target_original", "target_was_imputed"}
 
 
 def mape(y_true: pd.Series, y_pred: np.ndarray) -> float:
